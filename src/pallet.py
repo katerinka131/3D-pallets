@@ -1,6 +1,8 @@
 from box import Box
 import math
 from typing import List, Tuple
+
+
 class Pallet:
     def __init__(self, x1, y1, z1, x2, y2, z2):
         self.x1, self.y1, self.z1 = x1, y1, z1
@@ -11,16 +13,26 @@ class Pallet:
     def try_add(self, box: Box, orientation: int) -> bool:
         # Генерируем размеры коробки с учётом ориентации
         dims = self._generate_orientations(box)[orientation]
-        
+
         # Ищем самый ближний к (0,0,0) свободный сегмент, куда поместится коробка
-        best_fit = None
-        for sx1, sy1, sz1, sx2, sy2, sz2 in self.subpallets:
-            if (sx2 - sx1 >= dims[0] and sy2 - sy1 >= dims[1] and sz2 - sz1 >= dims[2]):
-                if not best_fit or math.sqrt(sx1**2 + sy1**2 + sz1**2) < math.sqrt(best_fit[0]**2 + best_fit[1]**2 + best_fit[2]**2):
-                    best_fit = (sx1, sy1, sz1, sx1 + dims[0], sy1 + dims[1], sz1 + dims[2])
-        
+        best_fit = min(
+            filter(
+                lambda subpallet: (
+                    subpallet[3] - subpallet[0] >= dims[0]
+                    and subpallet[4] - subpallet[1] >= dims[1]
+                    and subpallet[5] - subpallet[2] >= dims[2]
+                ),
+                self.subpallets,
+            ),
+            key=(lambda x: math.sqrt(x[0] ** 2 + x[1] ** 2 + x[2] ** 2)),
+            default=None
+        )
+
         if best_fit:
             x1, y1, z1, x2, y2, z2 = best_fit
+            x2 = x1 + dims[0]
+            y2 = y1 + dims[1]
+            z2 = z1 + dims[2]
             self.boxes.append((box.id, x1, y1, z1, x2, y2, z2))
             self._update_subpallets(x1, y1, z1, x2, y2, z2)
             return True
@@ -40,7 +52,14 @@ class Pallet:
     def _update_subpallets(self, bx1, by1, bz1, bx2, by2, bz2):
         new_subpallets = []
         for sx1, sy1, sz1, sx2, sy2, sz2 in self.subpallets:
-            if not (bx1 >= sx2 or bx2 <= sx1 or by1 >= sy2 or by2 <= sy1 or bz1 >= sz2 or bz2 <= sz1):
+            if not (
+                bx1 >= sx2
+                or bx2 <= sx1
+                or by1 >= sy2
+                or by2 <= sy1
+                or bz1 >= sz2
+                or bz2 <= sz1
+            ):
                 if sx1 < bx1:
                     new_subpallets.append((sx1, sy1, sz1, bx1, sy2, sz2))
                 if bx2 < sx2:
@@ -59,7 +78,10 @@ class Pallet:
 
     def occupied_volume(self) -> int:
         # Считаем объём всех уложенных коробок
-        return sum((x2 - x1) * (y2 - y1) * (z2 - z1) for _, x1, y1, z1, x2, y2, z2 in self.boxes)
+        return sum(
+            (x2 - x1) * (y2 - y1) * (z2 - z1)
+            for _, x1, y1, z1, x2, y2, z2 in self.boxes
+        )
 
     def total_volume(self) -> int:
         # Считаем общий объём паллеты
