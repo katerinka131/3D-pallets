@@ -14,7 +14,7 @@ class Chromosome:
         pallet = Pallet(0, 0, 0, *self.pallet_dimensions)
         for box, orientation in zip(self.sequence, self.orientations):
             if not pallet.try_add(box, orientation):
-                break
+                continue
         return pallet.occupied_volume() / pallet.total_volume()
 
     def mutate(self):
@@ -50,7 +50,10 @@ class Population:
     def evolve(self, generations: int):
         for _ in range(generations):
             # Селекция: выбираем лучшие хромосомы
-            self.chromosomes.sort(key=lambda c: c.fitness(), reverse=True)
+            fitness_values = [(c.fitness(), c) for c in self.chromosomes]
+            fitness_values.sort(key=lambda x: x[0], reverse=True)
+            self.chromosomes = [c for _, c in fitness_values]
+
             self.chromosomes = self.chromosomes[:len(self.chromosomes) // 2]
 
             # Кроссовер и мутация

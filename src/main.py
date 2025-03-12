@@ -3,17 +3,21 @@ from genetics import Population
 from pallet import Pallet
 from draw import visualize_pallet
 from box import Box 
+import time
 def main():
+    # box_dimensions, pallet_dimensions = read_file("data/2.csv")
     box_dimensions, pallet_dimensions = test_read_input()
+    
     boxes = [Box(id, d1, d2, d3) for id, d1, d2, d3 in box_dimensions]
     pallet = Pallet(0, 0, 0, *pallet_dimensions)
-
-    # Генетический алгоритм
+    start_time = time.perf_counter()
     population = Population(20, boxes, pallet_dimensions)
-    population.evolve(100)
+    population.evolve(50)
+    
     best_chromosome = population.best_chromosome()
 
-    #boxes = read_file(data.csv)
+    end_time = time.perf_counter()
+    elapsed_time = end_time - start_time
     
 
     # Укладка коробок по лучшей хромосоме
@@ -25,7 +29,7 @@ def main():
         print(f"\nПопытка укладки коробки {box.id} с ориентацией {orientation}:")
         if pallet.try_add(box, orientation):
             print(f"Коробка {box.id} успешно добавлена!")
-            # visualize_pallet(pallet)  # Визуализируем после каждой коробки
+            visualize_pallet(pallet)  # Визуализируем после каждой коробки
         else:
             print(f"Коробка {box.id} не может быть добавлена.")
         pallet.print_status()
@@ -33,6 +37,6 @@ def main():
     # Выводим значение функции приспособленности
     fitness_value = best_chromosome.fitness()
     print(f"\nФункция приспособленности (отношение объёма коробок к объёму паллеты): {fitness_value:.2f}")
-
+    print(f"\n⏱ Время выполнения алгоритма: {elapsed_time:.2f} секунд")
 if __name__ == "__main__":
     main()
