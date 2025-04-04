@@ -1,0 +1,6 @@
+[pallets]
+pallet-size = {width = 1200, length = 1000, height = 1500}
+visualize = true
+test-data = false
+data-path = "data/1.csv"
+deterministic-rand = true

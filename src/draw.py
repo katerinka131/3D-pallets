@@ -25,8 +25,9 @@ def distance_from_camera(center, camera_position=(10, 0, 10)):
     """Вычисляем расстояние от центра масс коробки до камеры (точки (0, 0, 0))."""
     return np.linalg.norm(center - np.array(camera_position))
 
-def visualize_pallet(pallet, show_segments=False):
-    """Визуализирует паллету с коробками и, опционально, свободными сегментами."""
+def visualize_pallet(pallet, last_added_box=None, show_segments=False):
+    """Визуализирует паллету с коробками и, опционально, свободными сегментами.
+    Последняя добавленная коробка отображается зеленым цветом."""
     fig = plt.figure(figsize=(8, 8))
     ax = fig.add_subplot(111, projection="3d")
     ax.set_box_aspect([1, 1, 1])  # Сохраняем пропорции
@@ -36,12 +37,16 @@ def visualize_pallet(pallet, show_segments=False):
 
     # Отображаем занятые коробки
     for box in sorted_boxes:
-        draw_box(ax, *box[1:], color="red", alpha=0.3)  # Установлен alpha=0.3 для прозрачности
+        # Если это последняя добавленная коробка, рисуем зеленым
+        if last_added_box is not None and box[0] == last_added_box[0]:  # Сравниваем по id
+            draw_box(ax, *box[1:], color="green", alpha=0.4)  # Более насыщенный зеленый для новой коробки
+        else:
+            draw_box(ax, *box[1:], color="red", alpha=0.3)
 
     # Отображаем свободные сегменты, если show_segments=True
     if show_segments:
         for segment in pallet.subpallets:
-            draw_box(ax, *segment, color="green", alpha=0.1)  # Установлен alpha=0.1 для прозрачности
+            draw_box(ax, *segment, color="blue", alpha=0.1)  # Изменил цвет сегментов на синий для различия
 
     # Настройки осей
     ax.set_xlim(0, pallet.x2)

@@ -14,7 +14,6 @@ class Pallet:
         # Генерируем размеры коробки с учётом ориентации
         dims = self._generate_orientations(box)[orientation]
 
-        # Ищем самый ближний к (0,0,0) свободный сегмент, куда поместится коробка
         best_fit = min(
             filter(
                 lambda subpallet: (
