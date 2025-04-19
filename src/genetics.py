@@ -40,12 +40,15 @@ class Chromosome:
     def fitness(self) -> float:
         logger.debug(f"Calculating fitness for chromosome {id(self)}")
         pallet = Pallet(0, 0, 0, *self.pallet_dimensions)
-        
+        unplaced_boxes = []
         
         for box, orientation in zip(self.sequence, self.orientations):
             if not pallet.try_add(box, orientation):
-                continue
-        
+                unplaced_boxes.append(box)
+
+        for box in unplaced_boxes:
+            for orientation in range(6):  
+                pallet.try_add(box, orientation)
         fitness = pallet.occupied_volume() / pallet.total_volume()
         print(f"|")
         return fitness
