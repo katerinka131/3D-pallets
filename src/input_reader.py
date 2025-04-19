@@ -5,6 +5,7 @@ def test_read_input():
     
     boxes = [
     [1, 600, 500, 750], 
+    [1, 600, 500, 750],
     [2, 400, 500, 750], 
     [3, 200, 500, 750], 
     [4, 600, 500, 750], 
@@ -38,6 +39,7 @@ def read_file(file_path):
             
             for _ in range(quantity):
                 boxes.append([sku, length, width, height])
+        print(f"Коробки получены")
     
     return boxes
 

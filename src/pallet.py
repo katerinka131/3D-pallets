@@ -2,6 +2,8 @@ from box import Box
 import math
 from typing import List, Tuple
 
+count = 0
+
 
 class Pallet:
     def __init__(self, x1, y1, z1, x2, y2, z2):
@@ -9,11 +11,11 @@ class Pallet:
         self.x2, self.y2, self.z2 = x2, y2, z2
         self.subpallets = [(x1, y1, z1, x2, y2, z2)]
         self.boxes = []
-
+    
     def try_add(self, box: Box, orientation: int) -> bool:
         # Генерируем размеры коробки с учётом ориентации
         dims = self._generate_orientations(box)[orientation]
-
+        
         best_fit = min(
             filter(
                 lambda subpallet: (
@@ -49,6 +51,7 @@ class Pallet:
         ]
 
     def _update_subpallets(self, bx1, by1, bz1, bx2, by2, bz2):
+        
         new_subpallets = []
         for sx1, sy1, sz1, sx2, sy2, sz2 in self.subpallets:
             if not (
