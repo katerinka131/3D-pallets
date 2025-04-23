@@ -48,7 +48,8 @@ class Chromosome:
 
         for box in unplaced_boxes:
             for orientation in range(6):  
-                pallet.try_add(box, orientation)
+                if pallet.try_add(box, orientation):  # Если удалось добавить
+                    break
         fitness = pallet.occupied_volume() / pallet.total_volume()
         print(f"|")
         return fitness
@@ -153,7 +154,7 @@ class Population:
             # Вычисление fitness (с использованием кэша)
             logger.info("Calculating fitness values...")
             try:
-                with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
+                with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
                     fitness_values = list(executor.map(self.cached_fitness, self.chromosomes))
                 logger.info(f"Fitness calculation completed for {len(fitness_values)} chromosomes")
             except Exception as e:
@@ -173,7 +174,7 @@ class Population:
             # Очистка кэша ТОЛЬКО для удалённых хромосом
             logger.info("Cleaning fitness cache...")
             remaining_chromosomes = set(new_population)
-            before_cache_size = len(self.get_fitness_cache())
+            before_cache_size = len(self.fitness_cache)
             self.fitness_cache = {
                 chrom: fitness 
                 for chrom, fitness in self.fitness_cache.items() 
@@ -208,11 +209,11 @@ class Population:
         
         if c in self.fitness_cache:
             
-            return self.get_fitness_cache()[c]
+            return self.fitness_cache[c]
         
         
         fitness = c.fitness()
-        self.get_fitness_cache()[c] = fitness
+        self.fitness_cache[c] = fitness
         return fitness
 
     def best_chromosome(self) -> Chromosome:
@@ -228,7 +229,4 @@ class Population:
         return best
     
 
-    def get_fitness_cache(self):
-        
-        
-        return self.fitness_cache
+    
