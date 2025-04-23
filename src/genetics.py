@@ -73,7 +73,7 @@ class Chromosome:
         for i in range(0, len(swap_indices), 2):
             idx1, idx2 = swap_indices[i], swap_indices[i+1]
             self.sequence[idx1], self.sequence[idx2] = self.sequence[idx2], self.sequence[idx1]
-    
+            self.orientations[idx1], self.orientations[idx2] = self.orientations[idx2], self.orientations[idx1]
     
 
     def crossover(self, other: 'Chromosome') -> 'Chromosome':
@@ -153,13 +153,13 @@ class Population:
             # Вычисление fitness (с использованием кэша)
             logger.info("Calculating fitness values...")
             try:
-                with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+                with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
                     fitness_values = list(executor.map(self.cached_fitness, self.chromosomes))
                 logger.info(f"Fitness calculation completed for {len(fitness_values)} chromosomes")
             except Exception as e:
                 logger.error(f"Error during fitness calculation: {str(e)}")
                 raise
-
+            
             # Отбор лучших хромосом
             logger.info("Selecting best chromosomes...")
             sorted_chromosomes = sorted(zip(fitness_values, self.chromosomes), 
