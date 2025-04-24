@@ -7,6 +7,7 @@ from box import Box
 from typing import List, Tuple
 import concurrent.futures
 from datetime import datetime
+from multiprocessing import Pool, cpu_count
 
 # Настройка логирования
 logging.basicConfig(
@@ -154,8 +155,8 @@ class Population:
             # Вычисление fitness (с использованием кэша)
             logger.info("Calculating fitness values...")
             try:
-                with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
-                    fitness_values = list(executor.map(self.cached_fitness, self.chromosomes))
+                with Pool(processes=cpu_count()) as pool:
+                    fitness_values = pool.map(self.cached_fitness, self.chromosomes)
                 logger.info(f"Fitness calculation completed for {len(fitness_values)} chromosomes")
             except Exception as e:
                 logger.error(f"Error during fitness calculation: {str(e)}")
