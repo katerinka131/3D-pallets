@@ -57,33 +57,27 @@ def main():
     
 
     # Укладка коробок по лучшей хромосоме
-    print("\nЛучшая хромосома:")
-    print(f"Последовательность коробок: {[box.id for box in best_chromosome.sequence]}")
-    print(f"Ориентации коробок: {best_chromosome.orientations}")
     unplaced_boxes = []
     for box, orientation in zip(best_chromosome.sequence, best_chromosome.orientations):
-        print(f"\nПопытка укладки коробки {box.id} с ориентацией {orientation}:")
         added = pallet.try_add(box, orientation)  # Сохраняем результат попытки добавления
         
         
         if added:
-            print(f"Коробка {box.id} успешно добавлена!")
             last_added = pallet.boxes[-1]  # Получаем последнюю добавленную коробку
         else:
             unplaced_boxes.append(box)
-            print(f"Коробка {box.id} не может быть добавлена.")
         
         if settings.visualize and added:
             visualize_pallet(pallet, last_added if added else None)
         
-        pallet.print_status()
+        
 
     for box in unplaced_boxes:
         for orientation in range(6):  
-            added=pallet.try_add(box, orientation)
-            if added:
-                print(f"Коробка {box.id} успешно добавлена")
+            added_unplased_boxes=pallet.try_add(box, orientation)
+            if added_unplased_boxes:
                 if settings.visualize :
+                    last_added = pallet.boxes[-1]
                     visualize_pallet(pallet, last_added if added else None)
                 break
 
@@ -91,7 +85,7 @@ def main():
 
     # Выводим значение функции приспособленности
     fitness_value = best_chromosome.fitness()
-    print(f"\nФункция приспособленности (отношение объёма коробок к объёму паллеты): {fitness_value:.2f}")
+    print(f"\nФункция приспособленности (отношение объёма коробок к объёму паллеты): {fitness_value:.3f}")
     print(f"\nВремя выполнения алгоритма: {elapsed_time:.2f} секунд")
 if __name__ == "__main__":
     main()

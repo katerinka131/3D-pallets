@@ -8,7 +8,8 @@ from typing import List, Tuple
 import concurrent.futures
 from datetime import datetime
 from multiprocessing import Pool, cpu_count
-
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
 # Настройка логирования
 logging.basicConfig(
     level=logging.INFO,
@@ -39,7 +40,6 @@ class Chromosome:
         return f"Chromosome(box_ids={box_ids}, orientations={self.orientations})"
     
     def fitness(self) -> float:
-        logger.debug(f"Calculating fitness for chromosome {id(self)}")
         pallet = Pallet(0, 0, 0, *self.pallet_dimensions)
         unplaced_boxes = []
         
@@ -52,7 +52,7 @@ class Chromosome:
                 if pallet.try_add(box, orientation):  # Если удалось добавить
                     break
         fitness = pallet.occupied_volume() / pallet.total_volume()
-        print(f"|")
+        
         return fitness
             
         
@@ -79,7 +79,6 @@ class Chromosome:
     
 
     def crossover(self, other: 'Chromosome') -> 'Chromosome':
-        logger.debug(f"Crossover between {id(self)} and {id(other)}")
         child = Chromosome(self.boxes, self.pallet_dimensions)
         split = random.randint(1, len(self.sequence) - 1)
         
@@ -91,7 +90,6 @@ class Chromosome:
                 child.sequence.append(box)
                 child.orientations.append(other.orientations[i])
         
-        logger.debug(f"Created child chromosome {id(child)} with {len(child.sequence)} boxes")
         
         return child
     
@@ -122,72 +120,45 @@ class Chromosome:
 class Population:
     def __init__(self, size: int, boxes: List[Box], pallet_dimensions: Tuple[int, int, int]):
         self.start_time = datetime.now()
-        logger.info(f"Initializing population with {size} chromosomes at {self.start_time}")
         
         self.chromosomes = []
         sorted_boxes = sorted(boxes, key=lambda box: box.volume(), reverse=True)
-        logger.info(f"Total boxes: {len(boxes)}, sorted by volume")
 
         for _ in range(size // 2):
             chromosome = Chromosome(sorted_boxes, pallet_dimensions, sorted=True)
             self.chromosomes.append(chromosome)
-            logger.debug(f"Created sorted chromosome {id(chromosome)}")
 
         # Вторая половина - случайные
         for _ in range(size - len(self.chromosomes)):  
             chromosome = Chromosome(boxes, pallet_dimensions)
             self.chromosomes.append(chromosome)
-            logger.debug(f"Created random chromosome {id(chromosome)}")
 
         self.fitness_cache = dict()
-        logger.info(f"Population initialized with {len(self.chromosomes)} chromosomes")
         
 
     
 
     def evolve(self, generations: int):
-        logger.info(f"Starting evolution for {generations} generations")
         
         for gen in range(generations):
-            gen_start_time = datetime.now()
             logger.info(f"\n================================ Generation {gen + 1}/{generations} ==============================")
             
-            # Вычисление fitness (с использованием кэша)
-            logger.info("Calculating fitness values...")
             try:
-                with Pool(processes=cpu_count()) as pool:
-                    fitness_values = pool.map(self.cached_fitness, self.chromosomes)
-                logger.info(f"Fitness calculation completed for {len(fitness_values)} chromosomes")
+                with ProcessPoolExecutor(max_workers=cpu_count()) as executor:
+                    fitness_values = list(executor.map(Chromosome.fitness, self.chromosomes))
+                
             except Exception as e:
-                logger.error(f"Error during fitness calculation: {str(e)}")
                 raise
             
-            # Отбор лучших хромосом
-            logger.info("Selecting best chromosomes...")
             sorted_chromosomes = sorted(zip(fitness_values, self.chromosomes), 
                                   key=lambda x: x[0], reverse=True)
-            new_population = [c for _, c in sorted_chromosomes[:len(self.chromosomes) // 2]]
+            new_population = [c for _, c in sorted_chromosomes[:7]]
             
-            logger.info(f"Selected {len(new_population)} best chromosomes. "
-                      f"Best fitness: {sorted_chromosomes[0][0]:.4f}, "
-                      f"Worst kept: {sorted_chromosomes[len(new_population)-1][0]:.4f}")
 
-            # Очистка кэша ТОЛЬКО для удалённых хромосом
-            logger.info("Cleaning fitness cache...")
-            remaining_chromosomes = set(new_population)
-            before_cache_size = len(self.fitness_cache)
-            self.fitness_cache = {
-                chrom: fitness 
-                for chrom, fitness in self.fitness_cache.items() 
-                if chrom in remaining_chromosomes
-            }
-            logger.info(f"Cache cleaned: {before_cache_size} -> {len(self.fitness_cache)} entries")
-
-            # Создание нового поколения (мутация + кроссовер)
-            logger.info("Creating new generation...")
+            
             new_generation = []
             
-            while len(new_generation) < len(new_population):
+            while len(new_generation) < 13:
                 parent1, parent2 = random.sample(new_population, 2)
                 child = parent1.crossover_ox(parent2)
                 if random.random() < 0.5: 
@@ -195,37 +166,16 @@ class Population:
                     child.mutate()
                 
                 new_generation.append(child)
-                logger.debug(f"Created child chromosome {id(child)}")
-            
-            logger.info(f"Created {len(new_generation)} new chromosomes")
 
             self.chromosomes = new_population + new_generation
-            logger.info(f"New population size: {len(self.chromosomes)} chromosomes")
             
             
-            gen_time = (datetime.now() - gen_start_time).total_seconds()
-            logger.info(f"Generation completed in {gen_time:.2f} seconds")
                 
-    def cached_fitness(self, c: Chromosome) -> float:
-        
-        if c in self.fitness_cache:
-            
-            return self.fitness_cache[c]
-        
-        
-        fitness = c.fitness()
-        self.fitness_cache[c] = fitness
-        return fitness
+    
 
     def best_chromosome(self) -> Chromosome:
         best = max(self.chromosomes, key=lambda c: c.fitness())
-        logger.info(f"\n\n\n\n=== BEST CHROMOSOME ===")
-        logger.info(f"Fitness: {best.fitness():.4f}")
-        logger.info(f"Sequence: {[box.id for box in best.sequence]}")
-        logger.info(f"Orientations: {best.orientations}")
         
-        total_time = (datetime.now() - self.start_time).total_seconds()
-        logger.info(f"Total execution time: {total_time:.2f} seconds")
         
         return best
     
