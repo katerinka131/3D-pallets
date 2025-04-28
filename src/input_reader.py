@@ -39,7 +39,7 @@ def read_file(file_path):
             
             for _ in range(quantity):
                 boxes.append([sku, length, width, height])
-        print(f"Коробки получены")
+        
     
     return boxes
 

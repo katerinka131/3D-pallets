@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import numpy as np
-
+from genetics import Population
 def draw_box(ax, x1, y1, z1, x2, y2, z2, color="yellow", alpha=0.3):  # Установлен alpha=0.3 для прозрачности
     """Рисует коробку или сегмент в 3D, правильно отображая грани по порядку."""
     vertices = [
@@ -41,7 +41,7 @@ def visualize_pallet(pallet, last_added_box=None, show_segments=False):
         if last_added_box is not None and box[0] == last_added_box[0]:  # Сравниваем по id
             draw_box(ax, *box[1:], color="green", alpha=0.4)  # Более насыщенный зеленый для новой коробки
         else:
-            draw_box(ax, *box[1:], color="red", alpha=0.3)
+            draw_box(ax, *box[1:], color="red", alpha=0.2)
 
     # Отображаем свободные сегменты, если show_segments=True
     if show_segments:
@@ -56,3 +56,8 @@ def visualize_pallet(pallet, last_added_box=None, show_segments=False):
     ax.set_ylabel("Y")
     ax.set_zlabel("Z")
     plt.show()
+
+
+
+
+

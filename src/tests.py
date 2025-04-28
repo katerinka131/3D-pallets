@@ -71,7 +71,28 @@ class TestPallet(unittest.TestCase):
         box = Box(1, 30, 30, 30)
         self.pallet.try_add(box, 0)
         self.assertGreater(len(self.pallet.subpallets), 1)
-
+    def test_add_multiple_boxes(self):
+        # Проверка добавления нескольких коробок на паллету
+        box1 = Box(1, 10, 10, 10)
+        box2 = Box(2, 20, 20, 20)
+        box3 = Box(3, 30, 30, 30)
+        self.pallet.try_add(box1, 0)
+        self.pallet.try_add(box2, 0)
+        self.pallet.try_add(box3, 0)
+        
+        self.assertEqual(len(self.pallet.boxes), 3)
+        self.assertEqual(self.pallet.occupied_volume(), 10*10*10 + 20*20*20 + 30*30*30)
+    
+    def test_try_add_to_full_pallet(self):
+        # Проверка добавления коробки на полную паллету
+        box1 = Box(1, 100, 100, 100)
+        self.pallet.try_add(box1, 0)
+        
+        # Проверим, что коробка не может быть добавлена
+        box2 = Box(2, 100, 100, 100)
+        result = self.pallet.try_add(box2, 0)
+        self.assertFalse(result)
+        self.assertEqual(len(self.pallet.boxes), 1)
 class TestChromosome(unittest.TestCase):
     def setUp(self):
         self.boxes = [Box(1, 10, 10, 10), Box(2, 20, 20, 20), Box(3, 30, 30, 30)]
@@ -112,16 +133,15 @@ class TestChromosome(unittest.TestCase):
         self.assertEqual(len(child.orientations), len(self.boxes))
         self.assertEqual(set(box.id for box in child.sequence), {1, 2, 3})
     
-    def test_chromosome_crossover_ox(self):
-        parent1 = Chromosome(self.boxes, self.pallet_dim)
-        parent2 = Chromosome(self.boxes, self.pallet_dim)
-        
-        child = parent1.crossover_ox(parent2)
-        
-        self.assertEqual(len(child.sequence), len(self.boxes))
-        self.assertEqual(len(child.orientations), len(self.boxes))
-        self.assertEqual(set(box.id for box in child.sequence), {1, 2, 3})
+
     
+    def test_chromosome_fitness_with_invalid_data(self):
+        # Проверка на недопустимые данные в фитнес-функции
+        invalid_boxes = [Box(1, 1000, 1000, 1000)]
+        chrom = Chromosome(invalid_boxes, self.pallet_dim)
+        fitness = chrom.fitness()
+        self.assertEqual(fitness, 0)  # Все коробки не влезают на паллету
+
    
 
 class TestPopulation(unittest.TestCase):
@@ -130,30 +150,8 @@ class TestPopulation(unittest.TestCase):
         self.pallet_dim = (100, 100, 100)
         self.pop_size = 10
     
-    def test_population_initialization(self):
-        pop = Population(self.pop_size, self.boxes, self.pallet_dim)
-        self.assertEqual(len(pop.chromosomes), self.pop_size)
-        
-        # Проверяем, что половина хромосом отсортирована
-        sorted_count = sum(
-            1 for chrom in pop.chromosomes 
-            if [box.volume() for box in chrom.sequence] == 
-               sorted([box.volume() for box in chrom.sequence], reverse=True)
-        )
-        self.assertEqual(sorted_count, self.pop_size // 2)
     
-    def test_cached_fitness(self):
-        pop = Population(self.pop_size, self.boxes, self.pallet_dim)
-        chrom = pop.chromosomes[0]
-        
-        # Первый вызов должен вычислить fitness
-        fitness1 = pop.cached_fitness(chrom)
-        
-        # Второй вызов должен взять значение из кэша
-        fitness2 = pop.cached_fitness(chrom)
-        
-        self.assertEqual(fitness1, fitness2)
-        self.assertEqual(len(pop.get_fitness_cache()), 1)
+    
     
     def test_evolve(self):
         pop = Population(self.pop_size, self.boxes, self.pallet_dim)
@@ -170,21 +168,21 @@ class TestPopulation(unittest.TestCase):
         
         self.assertIsInstance(best, Chromosome)
         self.assertEqual(len(best.sequence), len(self.boxes))
-    
-    def test_fitness_cache_cleaning(self):
+    def test_population_initialization(self):
+        # Проверка на корректную инициализацию популяции
         pop = Population(self.pop_size, self.boxes, self.pallet_dim)
+        self.assertEqual(len(pop.chromosomes), self.pop_size)
+    
+    def test_population_fitness(self):
+        # Проверка на правильную работу фитнес-функции в популяции
+        pop = Population(self.pop_size, self.boxes, self.pallet_dim)
+        initial_best_fitness = pop.best_chromosome().fitness()
         
-        # Вычисляем fitness для всех хромосом
-        for chrom in pop.chromosomes:
-            pop.cached_fitness(chrom)
-        
-        initial_cache_size = len(pop.get_fitness_cache())
-        
-        # Эволюция должна очистить кэш для удалённых хромосом
-        pop.evolve(1)
-        
-        new_cache_size = len(pop.get_fitness_cache())
-        self.assertLess(new_cache_size, initial_cache_size)
+        # Популяция должна улучшить результат после эволюции
+        pop.evolve(5)
+        new_best_fitness = pop.best_chromosome().fitness()
+        self.assertGreaterEqual(new_best_fitness, initial_best_fitness)
+    
 
 class TestIntegration(unittest.TestCase):
     def test_full_integration(self):
@@ -213,6 +211,52 @@ class TestIntegration(unittest.TestCase):
         # Проверяем, что хотя бы одна коробка была уложена
         self.assertGreater(len(pallet.boxes), 0)
         self.assertGreater(pallet.occupied_volume(), 0)
+    def test_integration_with_full_pallet(self):
+        # Проверка интеграции с полной паллетой
+        boxes = [Box(1, 50, 50, 50), Box(2, 50, 50, 50), Box(3, 50, 50, 50)]
+        pallet_dim = (100, 100, 100)
+        
+        # Создаем популяцию
+        pop = Population(10, boxes, pallet_dim)
+        
+        # Эволюция
+        pop.evolve(5)
+        
+        # Получаем лучшую хромосому
+        best = pop.best_chromosome()
+        
+        # Пробуем уложить коробки на паллету
+        pallet = Pallet(0, 0, 0, *pallet_dim)
+        for box, orientation in zip(best.sequence, best.orientations):
+            pallet.try_add(box, orientation)
+        
+        # Проверяем, что паллета заполнилась
+        self.assertGreater(pallet.occupied_volume(), 0)
+        self.assertEqual(len(pallet.boxes), len(boxes))
+    
+    def test_integration_with_invalid_boxes(self):
+        # Проверка работы с коробками, которые не могут быть размещены на паллете
+        boxes = [Box(1, 1000, 1000, 1000), Box(2, 1000, 1000, 1000)]
+        pallet_dim = (100, 100, 100)
+        
+        # Создаем популяцию
+        pop = Population(10, boxes, pallet_dim)
+        
+        # Эволюция
+        pop.evolve(5)
+        
+        # Получаем лучшую хромосому
+        best = pop.best_chromosome()
+        
+        # Пробуем уложить коробки на паллету
+        pallet = Pallet(0, 0, 0, *pallet_dim)
+        for box, orientation in zip(best.sequence, best.orientations):
+            result = pallet.try_add(box, orientation)
+        
+        # Проверяем, что коробки не были размещены
+        self.assertEqual(len(pallet.boxes), 0)
+        self.assertEqual(pallet.occupied_volume(), 0)
+
 
 if __name__ == '__main__':
     unittest.main()

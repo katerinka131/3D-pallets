@@ -11,15 +11,7 @@ from multiprocessing import Pool, cpu_count
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import ProcessPoolExecutor
 # Настройка логирования
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('ga_optimizer.log'),
-        logging.StreamHandler()
-    ]
-)
-logger = logging.getLogger(__name__)
+
 
 class Chromosome:
     def __init__(self, boxes: List[Box], pallet_dimensions: Tuple[int, int, int], sorted=False):
@@ -134,14 +126,13 @@ class Population:
             self.chromosomes.append(chromosome)
 
         self.fitness_cache = dict()
-        
+        self.best_fitness_per_generation = []
 
     
 
     def evolve(self, generations: int):
         
         for gen in range(generations):
-            logger.info(f"\n================================ Generation {gen + 1}/{generations} ==============================")
             
             try:
                 with ProcessPoolExecutor(max_workers=cpu_count()) as executor:
@@ -154,7 +145,7 @@ class Population:
                                   key=lambda x: x[0], reverse=True)
             new_population = [c for _, c in sorted_chromosomes[:7]]
             
-
+            self.best_fitness_per_generation.append(max(fitness_values))
             
             new_generation = []
             

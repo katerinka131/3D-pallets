@@ -87,5 +87,6 @@ def main():
     fitness_value = best_chromosome.fitness()
     print(f"\nФункция приспособленности (отношение объёма коробок к объёму паллеты): {fitness_value:.3f}")
     print(f"\nВремя выполнения алгоритма: {elapsed_time:.2f} секунд")
+    
 if __name__ == "__main__":
     main()
