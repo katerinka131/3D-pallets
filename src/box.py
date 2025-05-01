@@ -5,3 +5,9 @@ class Box:
 
     def volume(self):
         return self.d1 * self.d2 * self.d3
+
+    def get_orientations(self):
+        return [
+            (self.d1, self.d2, self.d3),
+            (self.d2, self.d1, self.d3)
+        ]

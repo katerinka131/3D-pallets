@@ -1,90 +1,65 @@
 import random
-import os
-import psutil
-import logging
 from pallet import Pallet
 from box import Box
 from typing import List, Tuple
-import concurrent.futures
-from datetime import datetime
-from multiprocessing import Pool, cpu_count
-from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import ProcessPoolExecutor
-# Настройка логирования
-
+from multiprocessing import cpu_count
 
 class Chromosome:
     def __init__(self, boxes: List[Box], pallet_dimensions: Tuple[int, int, int], sorted=False):
         self.boxes = boxes
         self.pallet_dimensions = pallet_dimensions
         if sorted:
-            self.sequence = boxes[:]  
-            
+            self.sequence = boxes[:]
         else:
-            self.sequence = random.sample(boxes, len(boxes))  
-            
-
-        self.orientations = [random.choice([0, 1, 2, 3, 4, 5]) for _ in range(len(boxes))]
-        
-
+            self.sequence = random.sample(boxes, len(boxes))
+        self.orientations = [random.choice([0, 1]) for _ in range(len(boxes))]
+    
     def __repr__(self):
         box_ids = [box.id for box in self.sequence]
         return f"Chromosome(box_ids={box_ids}, orientations={self.orientations})"
     
     def fitness(self) -> float:
-        pallet = Pallet(0, 0, 0, *self.pallet_dimensions)
-        unplaced_boxes = []
+        
+        pallet = Pallet(self.pallet_dimensions[0], self.pallet_dimensions[1])
         
         for box, orientation in zip(self.sequence, self.orientations):
-            if not pallet.try_add(box, orientation):
-                unplaced_boxes.append(box)
+            pallet.try_add(box, orientation)
+                
 
-        for box in unplaced_boxes:
-            for orientation in range(6):  
-                if pallet.try_add(box, orientation):  # Если удалось добавить
-                    break
-        fitness = pallet.occupied_volume() / pallet.total_volume()
+        pallet_volume = pallet.length * pallet.width * pallet.current_height
         
-        return fitness
-            
-        
+        return pallet.occupied_volume() / pallet_volume
 
     def mutate(self):
-        
         num_boxes = len(self.sequence)
-
-        # Меняем ориентации у 10% коробок
-        mutations = num_boxes // 10 + 1
-        for _ in range(mutations):  
+        
+        # Мутация ориентации
+        for _ in range(max(1, num_boxes // 10)):
             idx = random.randint(0, num_boxes - 1)
-            old_orientation = self.orientations[idx]
-            self.orientations[idx] = random.choice([0, 1, 2, 3, 4, 5])
-            
-
-        # Переставляем 5% коробок местами
-        num_swaps = max(1, num_boxes // 20)
-        swap_indices = random.sample(range(num_boxes), num_swaps * 2)
-        for i in range(0, len(swap_indices), 2):
-            idx1, idx2 = swap_indices[i], swap_indices[i+1]
+            self.orientations[idx] = 1 - self.orientations[idx]
+        
+        # Мутация порядка
+        for _ in range(max(1, num_boxes // 20)):
+            idx1, idx2 = random.sample(range(num_boxes), 2)
             self.sequence[idx1], self.sequence[idx2] = self.sequence[idx2], self.sequence[idx1]
             self.orientations[idx1], self.orientations[idx2] = self.orientations[idx2], self.orientations[idx1]
-    
 
     def crossover(self, other: 'Chromosome') -> 'Chromosome':
         child = Chromosome(self.boxes, self.pallet_dimensions)
         split = random.randint(1, len(self.sequence) - 1)
         
+        # Берем первую часть от первого родителя
         child.sequence = self.sequence[:split]
         child.orientations = self.orientations[:split]
         
-        for i, box in enumerate(other.sequence):
+        # Добавляем недостающие коробки от второго родителя
+        for box, orientation in zip(other.sequence, other.orientations):
             if box not in child.sequence:
                 child.sequence.append(box)
-                child.orientations.append(other.orientations[i])
-        
+                child.orientations.append(orientation)
         
         return child
-    
     def crossover_ox(self, other: 'Chromosome') -> 'Chromosome':
         child = Chromosome(self.boxes, self.pallet_dimensions)
         size = len(self.sequence)
@@ -108,67 +83,49 @@ class Chromosome:
         child.orientations = remaining_orient[:point1] + segment_orient + remaining_orient[point1:]
         
         return child
-
 class Population:
     def __init__(self, size: int, boxes: List[Box], pallet_dimensions: Tuple[int, int, int]):
-        self.start_time = datetime.now()
+        self.boxes = boxes
+        self.pallet_dimensions = pallet_dimensions
         
-        self.chromosomes = []
+        # Создаем половину популяции с отсортированными по объему коробками
         sorted_boxes = sorted(boxes, key=lambda box: box.volume(), reverse=True)
-
-        for _ in range(size // 2):
-            chromosome = Chromosome(sorted_boxes, pallet_dimensions, sorted=True)
-            self.chromosomes.append(chromosome)
-
+        self.chromosomes = [Chromosome(sorted_boxes, pallet_dimensions, sorted=True) 
+                          for _ in range(size // 2)]
+        
         # Вторая половина - случайные
-        for _ in range(size - len(self.chromosomes)):  
-            chromosome = Chromosome(boxes, pallet_dimensions)
-            self.chromosomes.append(chromosome)
-
-        self.fitness_cache = dict()
+        self.chromosomes.extend([Chromosome(boxes, pallet_dimensions) 
+                               for _ in range(size - len(self.chromosomes))])
+        
         self.best_fitness_per_generation = []
 
-    
-
     def evolve(self, generations: int):
-        
         for gen in range(generations):
-            
+            # Оцениваем приспособленность
+            print(f"{gen}")
             try:
                 with ProcessPoolExecutor(max_workers=cpu_count()) as executor:
                     fitness_values = list(executor.map(Chromosome.fitness, self.chromosomes))
                 
             except Exception as e:
                 raise
-            
-            sorted_chromosomes = sorted(zip(fitness_values, self.chromosomes), 
-                                  key=lambda x: x[0], reverse=True)
-            new_population = [c for _, c in sorted_chromosomes[:7]]
-            
             self.best_fitness_per_generation.append(max(fitness_values))
             
-            new_generation = []
+            # Отбираем лучшие
+            sorted_chromosomes = sorted(zip(fitness_values, self.chromosomes), 
+                                     key=lambda x: x[0], reverse=True)
+            elite = [c for _, c in sorted_chromosomes[:len(self.chromosomes)//2]]
             
-            while len(new_generation) < 13:
-                parent1, parent2 = random.sample(new_population, 2)
+            # Создаем новое поколение
+            new_generation = elite.copy()
+            while len(new_generation) < len(self.chromosomes):
+                parent1, parent2 = random.sample(elite, 2)
                 child = parent1.crossover_ox(parent2)
-                if random.random() < 0.5: 
-                    
+                if random.random() < 0.3:
                     child.mutate()
-                
                 new_generation.append(child)
-
-            self.chromosomes = new_population + new_generation
             
-            
-                
+            self.chromosomes = new_generation
     
-
     def best_chromosome(self) -> Chromosome:
-        best = max(self.chromosomes, key=lambda c: c.fitness())
-        
-        
-        return best
-    
-
-    
+        return max(self.chromosomes, key=lambda c: c.fitness())
