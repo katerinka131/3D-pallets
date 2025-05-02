@@ -34,8 +34,8 @@ class Chromosome:
     def mutate(self):
         num_boxes = len(self.sequence)
         
-        # Мутация ориентации
-        for _ in range(max(1, num_boxes // 10)):
+        
+        for _ in range(max(1, num_boxes // 9)):
             idx = random.randint(0, num_boxes - 1)
             self.orientations[idx] = 1 - self.orientations[idx]
         
@@ -121,8 +121,8 @@ class Population:
             while len(new_generation) < len(self.chromosomes):
                 parent1, parent2 = random.sample(elite, 2)
                 child = parent1.crossover_ox(parent2)
-                if random.random() < 0.3:
-                    child.mutate()
+                
+                child.mutate()
                 new_generation.append(child)
             
             self.chromosomes = new_generation

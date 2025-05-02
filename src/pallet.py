@@ -30,33 +30,11 @@ class Pallet:
         box_grid_length = (box_length + self.cell_size - 1) // self.cell_size
         box_grid_width = (box_width + self.cell_size - 1) // self.cell_size
         
-        # Сначала собираем все возможные позиции на минимальной высоте
-        candidates = []
-        min_h = self.min_height
         
-        if min_h in self.height_cells:
-            # Сортируем клетки по близости к углу (0,0)
-            sorted_cells = sorted(self.height_cells[min_h], key=lambda pos: (pos[0] + pos[1], pos[0], pos[1]))
-            
-            for x, y in sorted_cells:
-                if (x + box_grid_length <= self.grid_length and 
-                    y + box_grid_width <= self.grid_width and
-                    np.all(self.height_map[x:x+box_grid_length, y:y+box_grid_width] <= min_h)):
-                    # Добавляем кандидата с расстоянием до угла
-                    distance = x + y
-                    candidates.append((distance, x, y))
-        
-        # Если нашли кандидатов на минимальной высоте - выбираем ближайшего к углу
-        if candidates:
-            candidates.sort()  # Сортировка по distance
-            _, best_x, best_y = candidates[0]
-            self._place_box(best_x, best_y, box_grid_length, box_grid_width, box_height, box)
-            return True
         
         # Если на минимальной высоте не нашли, ищем на других высотах
         for h in sorted(self.height_cells.keys()):
-            if h == min_h:
-                continue  # Уже проверили
+            
                 
             # Снова сортируем по близости к углу
             sorted_cells = sorted(self.height_cells[h], key=lambda pos: (pos[0] + pos[1], pos[0], pos[1]))
