@@ -32,14 +32,6 @@ def main():
         box_dimensions = test_read_input()  
     else:
         box_dimensions = read_file(settings.data_path) 
-    
-    # Проверка данных
-    if not box_dimensions:
-        print("Ошибка: Нет данных о коробках!")
-        return
-    
-    print(f"Загружено {len(box_dimensions)} коробок")
-    
     boxes = [Box(id, d1, d2, d3) for id, d1, d2, d3 in box_dimensions]
     pallet = Pallet(settings.pallet_length, settings.pallet_width)
     
@@ -47,7 +39,7 @@ def main():
     
     pallet_dimensions = (settings.pallet_length, settings.pallet_width, float('inf'))
     population = Population(20, boxes, pallet_dimensions)
-    population.evolve(50)
+    population.evolve(200)
     
     best_chromosome = population.best_chromosome()
     end_time = time.perf_counter()

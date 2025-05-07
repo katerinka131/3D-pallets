@@ -1,6 +1,6 @@
 [pallets]
 pallet-size = {width = 1200, length = 800}
-visualize = true
-test-data = true
-data-path = "data/116.csv"
+visualize = false
+test-data = false
+data-path = "data/5.csv"
 deterministic-rand = true
