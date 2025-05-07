@@ -15,13 +15,13 @@ class Pallet:
         self.height_map = np.zeros((self.grid_length, self.grid_width), dtype=np.int16)
     
     def try_add(self, box, orientation: int) -> bool:
-        """Размещает коробку на минимальной высоте, ближе к углу (0,0)"""
+        """Размещает коробку, выбирая позицию с минимальной высотой и минимальным остаточным пространством"""
         box_length, box_width, box_height = box.get_orientations()[orientation]
         box_grid_length = (box_length + self.cell_size - 1) // self.cell_size
         box_grid_width = (box_width + self.cell_size - 1) // self.cell_size
         
         min_height = float('inf')
-        best_positions = []
+        candidate_positions = []
         
         # Перебираем все возможные позиции
         for x in range(self.grid_length - box_grid_length + 1):
@@ -29,19 +29,29 @@ class Pallet:
                 # Находим максимальную высоту в области размещения
                 area_height = np.max(self.height_map[x:x+box_grid_length, y:y+box_grid_width])
                 
-                # Если нашли позицию с меньшей высотой, обновляем результаты
+                # Рассчитываем остаточное пространство справа и сверху
+                remaining_right = self.grid_length - (x + box_grid_length)
+                remaining_top = self.grid_width - (y + box_grid_width)
+                remaining_space = remaining_right + remaining_top
+                
+                # Критерии выбора:
+                # 1. Минимальная высота размещения
+                # 2. Минимальное остаточное пространство
+                # 3. Ближе к углу (0,0)
+                candidate_score = (area_height, remaining_space, x + y)
+                
                 if area_height < min_height:
                     min_height = area_height
-                    best_positions = [(x, y)]
+                    candidate_positions = [(x, y, candidate_score)]
                 elif area_height == min_height:
-                    best_positions.append((x, y))
+                    candidate_positions.append((x, y, candidate_score))
         
-        if not best_positions:
+        if not candidate_positions:
             print(f'Не удалось разместить коробку {box.id}')
             return False
         
-        # Выбираем позицию, ближайшую к углу (0,0)
-        best_x, best_y = min(best_positions, key=lambda pos: pos[0]**2 + pos[1]**2)
+        # Выбираем позицию с лучшими показателями
+        best_x, best_y, _ = min(candidate_positions, key=lambda pos: pos[2])
         
         # Размещаем коробку
         self._place_box(best_x, best_y, box_grid_length, box_grid_width, box_height, box)
@@ -71,6 +81,7 @@ class Pallet:
         # Обновляем максимальную высоту
         self.current_height = max(self.current_height, new_height)
     
+    # Остальные методы без изменений
     def occupied_volume(self) -> int:
         return sum(box['length'] * box['width'] * box['height'] for box in self.boxes)
     
