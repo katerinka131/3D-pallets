@@ -39,7 +39,7 @@ def main():
     
     pallet_dimensions = (settings.pallet_length, settings.pallet_width, float('inf'))
     population = Population(20, boxes, pallet_dimensions)
-    population.evolve(200)
+    population.evolve(100)
     
     best_chromosome = population.best_chromosome()
     end_time = time.perf_counter()
